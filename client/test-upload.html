@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudinary Upload Test</title>
+</head>
+<body>
+    <h1>Cloudinary Upload Test</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <button onclick="testUpload()">Test Upload</button>
+    <div id="result"></div>
+
+    <script>
+        async function testUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', 'ecom-multirole');
+                formData.append('folder', 'ecom-multirole');
+
+                const response = await fetch('https://api.cloudinary.com/v1_1/drsarxk57/image/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('result').innerHTML = `
+                        <h3>Upload Successful!</h3>
+                        <p><strong>URL:</strong> ${data.secure_url}</p>
+                        <p><strong>Public ID:</strong> ${data.public_id}</p>
+                        <img src="${data.secure_url}" style="max-width: 300px; height: auto;">
+                    `;
+                } else {
+                    const error = await response.json();
+                    document.getElementById('result').innerHTML = `
+                        <h3>Upload Failed</h3>
+                        <p><strong>Error:</strong> ${error.error?.message || 'Unknown error'}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Upload Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

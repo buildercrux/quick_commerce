@@ -1,0 +1,75 @@
+/* Delivery Theme System - CSS Variables */
+
+:root {
+  --brand: #2563eb; /* default = standard */
+  --brand-hover: #1e40af;
+  --bg: #ffffff;
+  --navbar-bg: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+
+:root[data-delivery='instant'] {
+  --brand: #16a34a; /* green */
+  --brand-hover: #15803d;
+  --bg: #f0fdf4; /* light green background */
+  --navbar-bg: #dcfce7; /* light green navbar */
+  --text-primary: #14532d;
+  --text-secondary: #16a34a;
+  --border: #bbf7d0;
+  --shadow: rgba(22, 163, 74, 0.1);
+}
+
+:root[data-delivery='nextDay'] {
+  --brand: #f59e0b; /* amber */
+  --brand-hover: #d97706;
+  --bg: #fffbeb; /* light amber background */
+  --navbar-bg: #fef3c7; /* light amber navbar */
+  --text-primary: #92400e;
+  --text-secondary: #f59e0b;
+  --border: #fed7aa;
+  --shadow: rgba(245, 158, 11, 0.1);
+}
+
+/* Global theme-aware classes */
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-navbar {
+  background-color: var(--navbar-bg);
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.theme-button {
+  background-color: var(--brand);
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.theme-button:hover {
+  background-color: var(--brand-hover);
+}
+
+.theme-text-primary {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-border {
+  border-color: var(--border);
+}
+
+.theme-shadow {
+  box-shadow: 0 4px 6px -1px var(--shadow);
+}
+
+
