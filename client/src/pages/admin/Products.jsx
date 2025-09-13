@@ -6,12 +6,19 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchAllProducts, deleteProduct, createProduct, updateProduct } from '../../features/products/productSlice'
+import { getSellerProducts as fetchMine, deleteProduct as deleteMine, updateProduct as updateMine } from '../../features/seller/sellerSlice'
 import ImageUpload from '../../components/ui/ImageUpload'
+import sellerAPI from '../../services/sellerAPI'
 import toast from 'react-hot-toast'
 
 const AdminProducts = () => {
   const dispatch = useDispatch()
-  const { products, isLoading, error } = useSelector((state) => state.products)
+  const role = useSelector((state) => state.auth?.user?.role)
+  const productsState = useSelector((state) => state.products)
+  const sellerState = useSelector((state) => state.seller)
+  const products = role === 'seller' ? (sellerState?.products || []) : (productsState?.products || [])
+  const isLoading = role === 'seller' ? !!sellerState?.loading : !!productsState?.isLoading
+  const error = role === 'seller' ? sellerState?.error : productsState?.error
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -23,8 +30,12 @@ const AdminProducts = () => {
   const [viewMode] = useState('cards') // cards view only
 
   useEffect(() => {
-    dispatch(fetchAllProducts({ page, limit: 20 }))
-  }, [dispatch, page])
+    if (role === 'seller') {
+      dispatch(fetchMine())
+    } else {
+      dispatch(fetchAllProducts({ page, limit: 20 }))
+    }
+  }, [dispatch, page, role])
 
   const handleAddProduct = () => {
     setShowAddDialog(true)
@@ -38,7 +49,13 @@ const AdminProducts = () => {
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      await dispatch(deleteProduct(productId))
+      if (role === 'seller') {
+        await dispatch(deleteMine(productId))
+        dispatch(fetchMine())
+      } else {
+        await dispatch(deleteProduct(productId))
+        dispatch(fetchAllProducts({ page, limit: 20 }))
+      }
     }
   }
 
@@ -53,7 +70,8 @@ const AdminProducts = () => {
     setSelectedProduct(null)
   }
 
-  const filteredProducts = products?.filter(product => {
+  const list = Array.isArray(products) ? products : []
+  const filteredProducts = list.filter(product => {
     const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !categoryFilter || product.category === categoryFilter
@@ -126,7 +144,7 @@ const AdminProducts = () => {
             </div>
             <div className="md:col-span-1">
               <button
-                    onClick={() => dispatch(fetchAllProducts({ page, limit: 20 }))}
+                    onClick={() => role === 'seller' ? dispatch(fetchMine()) : dispatch(fetchAllProducts({ page, limit: 20 }))}
                 className="w-full rounded-md border px-3 py-2 hover:bg-gray-50"
                   >
                     Refresh
@@ -166,6 +184,12 @@ const AdminProducts = () => {
                   <div className="text-xs text-gray-500 truncate">
                             {product.vendor?.businessName || product.vendor?.name || 'Unknown'}
                   </div>
+                  {role !== 'seller' && product.seller && (
+                    <div className="text-xs text-blue-600 truncate flex items-center gap-1" title={`Seller: ${product.seller?.storeName || product.seller?.name || product.seller?.email || ''}`}>
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-100">Seller-added</span>
+                      <span className="truncate">{product.seller?.storeName || product.seller?.name || product.seller?.email}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs text-gray-600">
                     <span className="truncate">{product.category}</span>
                     <span>Stock: {product.inventory?.quantity ?? product.stock ?? 0}</span>
@@ -218,16 +242,40 @@ const AdminProducts = () => {
           onSave={async (productData) => {
             if (editingProduct) {
               try {
-                await dispatch(updateProduct({ id: editingProduct._id, productData })).unwrap()
-                await dispatch(fetchAllProducts()).unwrap()
+                if (role === 'seller') {
+                  await dispatch(updateMine({ productId: editingProduct._id, productData })).unwrap()
+                  await dispatch(fetchMine()).unwrap()
+                } else {
+                  await dispatch(updateProduct({ id: editingProduct._id, productData })).unwrap()
+                  await dispatch(fetchAllProducts({ page, limit: 20 })).unwrap()
+                }
                 toast.success('Product updated successfully!')
               } catch (error) {
                 toast.error('Failed to update product: ' + (error.message || 'Unknown error'))
               }
             } else {
               try {
-                await dispatch(createProduct(productData)).unwrap()
-                dispatch(fetchAllProducts())
+                // If current role is seller, use seller create+image endpoints for Cloudinary upload parity
+                const state = window.__APP_STORE__?.getState?.()
+                const role = state?.auth?.user?.role
+                if (role === 'seller') {
+                  const res = await sellerAPI.createProduct(productData)
+                  const newId = res?.data?.data?._id
+                  if (newId && productData.images?.length) {
+                    // If images is an array of File objects from ImageUpload
+                    const fd = new FormData()
+                    productData.images.forEach((img) => {
+                      if (img instanceof File) fd.append('images', img)
+                    })
+                    if ([...fd.keys()].length) {
+                      await sellerAPI.uploadImages(newId, fd)
+                    }
+                  }
+                  await dispatch(fetchMine()).unwrap()
+                } else {
+                  await dispatch(createProduct(productData)).unwrap()
+                  dispatch(fetchAllProducts({ page, limit: 20 }))
+                }
               } catch (error) {
                 toast.error('Failed to create product')
               }
@@ -387,125 +435,134 @@ const ProductFormDialog = ({ open, onClose, product, onSave }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-3xl rounded-lg bg-white shadow-lg">
-        <div className="border-b px-4 py-3">
+      <div className="relative z-10 w-full max-w-3xl max-h-[90vh] rounded-lg bg-white shadow-lg flex flex-col">
+        {/* Fixed Header */}
+        <div className="border-b px-4 py-3 flex-shrink-0">
           <h2 className="text-lg font-semibold">{product ? 'Edit Product' : 'Add New Product'}</h2>
         </div>
-        <form onSubmit={handleSubmit} className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-              <input
-                value={formData.name}
-                onChange={handleChange('name')}
-                className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                required
-              />
-              {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
-            </div>
-            
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                rows={4}
-                value={formData.description}
-                onChange={handleChange('description')}
-                className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                required
-              />
-              {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-              <div className="flex items-center rounded-md border border-gray-300 focus-within:ring-1 focus-within:ring-blue-500">
-                <span className="px-3 text-gray-500">₹</span>
+        
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
                 <input
-                type="number"
-                value={formData.price}
-                onChange={handleChange('price')}
-                  className="w-full rounded-r-md focus:outline-none px-2 py-2"
-                required
-              />
+                  value={formData.name}
+                  onChange={handleChange('name')}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+                {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
               </div>
-              {errors.price && <p className="mt-1 text-xs text-red-600">{errors.price}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-              <input
-                type="number"
-                value={formData.stock}
-                onChange={handleChange('stock')}
-                className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                required
-              />
-              {errors.stock && <p className="mt-1 text-xs text-red-600">{errors.stock}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
-                  value={formData.category}
-                  onChange={handleChange('category')}
-                className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                >
-                  {categories.map(category => (
-                  <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>
-                ))}
-              </select>
-              {errors.category && <p className="mt-1 text-xs text-red-600">{errors.category}</p>}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                    checked={formData.isActive}
-                    onChange={handleChange('isActive')}
-                id="activeStatus"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="activeStatus" className="text-sm text-gray-700">Active Status</label>
-            </div>
-            
-            <div className="md:col-span-2">
-              <div className="my-2 h-px bg-gray-200" />
-              <p className="text-sm font-medium text-gray-700 mb-2">Delivery Options</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {['instant','nextDay','standard'].map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={!!formData.deliveryOptions[opt]}
-                      onChange={handleDeliveryOptionChange(opt)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm capitalize">{opt === 'nextDay' ? 'Next Day' : opt}</span>
-                  </label>
-                ))}
+              
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleChange('description')}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
               </div>
-              {errors.deliveryOptions && <p className="mt-1 text-xs text-red-600">{errors.deliveryOptions}</p>}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                <div className="flex items-center rounded-md border border-gray-300 focus-within:ring-1 focus-within:ring-blue-500">
+                  <span className="px-3 text-gray-500">₹</span>
+                  <input
+                  type="number"
+                  value={formData.price}
+                  onChange={handleChange('price')}
+                    className="w-full rounded-r-md focus:outline-none px-2 py-2"
+                  required
+                />
+                </div>
+                {errors.price && <p className="mt-1 text-xs text-red-600">{errors.price}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={handleChange('stock')}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+                {errors.stock && <p className="mt-1 text-xs text-red-600">{errors.stock}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                    value={formData.category}
+                    onChange={handleChange('category')}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    {categories.map(category => (
+                    <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>
+                  ))}
+                </select>
+                {errors.category && <p className="mt-1 text-xs text-red-600">{errors.category}</p>}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                      checked={formData.isActive}
+                      onChange={handleChange('isActive')}
+                  id="activeStatus"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="activeStatus" className="text-sm text-gray-700">Active Status</label>
+              </div>
+              
+              <div className="md:col-span-2">
+                <div className="my-2 h-px bg-gray-200" />
+                <p className="text-sm font-medium text-gray-700 mb-2">Delivery Options</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {['instant','nextDay','standard'].map((opt) => (
+                    <label key={opt} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.deliveryOptions[opt]}
+                        onChange={handleDeliveryOptionChange(opt)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm capitalize">{opt === 'nextDay' ? 'Next Day' : opt}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors.deliveryOptions && <p className="mt-1 text-xs text-red-600">{errors.deliveryOptions}</p>}
+              </div>
+              
+              <div className="md:col-span-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Product Images</p>
+                <div className="max-h-64 overflow-y-auto">
+                  <ImageUpload
+                    value={formData.images}
+                    onChange={(images) => setFormData(prev => ({ ...prev, images }))}
+                    multiple={true}
+                    maxFiles={5}
+                    folder="ecom-multirole/products"
+                    accept="image/*"
+                  />
+                </div>
+              </div>
             </div>
-            
-            <div className="md:col-span-2">
-              <p className="text-sm font-medium text-gray-700 mb-2">Product Images</p>
-              <ImageUpload
-                value={formData.images}
-                onChange={(images) => setFormData(prev => ({ ...prev, images }))}
-                multiple={true}
-                maxFiles={5}
-                folder="ecom-multirole/products"
-                accept="image/*"
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2 border-t pt-3">
-            <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">Cancel</button>
-            <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+          </form>
+        </div>
+        
+        {/* Fixed Footer */}
+        <div className="border-t px-4 py-3 flex justify-end gap-2 flex-shrink-0">
+          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">Cancel</button>
+          <button type="submit" onClick={handleSubmit} className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
             {product ? 'Update Product' : 'Create Product'}
-            </button>
-          </div>
-      </form>
+          </button>
+        </div>
       </div>
     </div>
   )

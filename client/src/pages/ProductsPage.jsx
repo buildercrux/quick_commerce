@@ -19,6 +19,7 @@ import {
   AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
 import { fetchProducts, setFilters, clearFilters } from '../features/products/productSlice'
+import WishlistButton from '../components/ui/WishlistButton'
 
 const ProductsPage = () => {
   const dispatch = useDispatch()
@@ -130,13 +131,11 @@ const ProductsPage = () => {
             }}
           />
         <div className="absolute top-4 right-4 flex space-x-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-          >
-            <HeartIcon className="h-5 w-5 text-gray-600 hover:text-red-500" />
-          </motion.button>
+          <WishlistButton 
+            productId={product._id} 
+            size="md"
+            className="bg-white/80 backdrop-blur-sm hover:bg-white"
+          />
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -190,6 +189,36 @@ const ProductsPage = () => {
             {product.category}
           </span>
         </div>
+
+        {/* Seller Information */}
+        {product.seller && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {product.seller.sellerDetails?.sellerName || product.seller.name}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {product.seller.sellerDetails?.address?.city && product.seller.sellerDetails?.address?.state 
+                    ? `${product.seller.sellerDetails.address.city}, ${product.seller.sellerDetails.address.state}`
+                    : 'Professional Seller'
+                  }
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center space-x-1">
+                  <StarIcon className="h-3 w-3 text-yellow-400 fill-current" />
+                  <span className="text-xs text-gray-600">
+                    {product.seller.sellerDetails?.phone ? 'Verified' : 'Seller'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {product.seller.sellerDetails?.gstNumber ? 'GST Registered' : 'Individual Seller'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Link
             to={`/products/${product._id}`}

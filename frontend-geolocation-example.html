@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Sellers - Geolocation Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .seller-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .seller-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .seller-distance {
+            color: #007bff;
+            font-size: 0.9em;
+        }
+        .seller-address {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .coordinates {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 Find Nearby Sellers</h1>
+        <p>This example demonstrates how to use the Geolocation API to find sellers within a 5km radius.</p>
+        
+        <div>
+            <button id="getLocationBtn" class="btn">📍 Get My Location</button>
+            <button id="testLocationBtn" class="btn">🧪 Test with Delhi</button>
+            <button id="clearBtn" class="btn">🗑️ Clear Results</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="coordinates"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001/api/v1/seller-details/nearby';
+        
+        const statusDiv = document.getElementById('status');
+        const coordinatesDiv = document.getElementById('coordinates');
+        const resultsDiv = document.getElementById('results');
+        const getLocationBtn = document.getElementById('getLocationBtn');
+        const testLocationBtn = document.getElementById('testLocationBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        function showStatus(message, type = 'loading') {
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        function showCoordinates(lat, lng) {
+            coordinatesDiv.innerHTML = `
+                <div class="coordinates">
+                    <strong>Current Coordinates:</strong><br>
+                    Latitude: ${lat}<br>
+                    Longitude: ${lng}
+                </div>
+            `;
+        }
+
+        function showResults(sellers) {
+            if (sellers.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">No sellers found within 5km radius.</div>';
+                return;
+            }
+
+            let html = `<div class="success">Found ${sellers.length} nearby sellers:</div>`;
+            
+            sellers.forEach(seller => {
+                html += `
+                    <div class="seller-card">
+                        <div class="seller-name">${seller.sellerName || 'Unknown Seller'}</div>
+                        <div class="seller-distance">📍 ${seller.distance} km away</div>
+                        <div class="seller-address">
+                            ${seller.address?.street ? seller.address.street + ', ' : ''}
+                            ${seller.address?.city ? seller.address.city + ', ' : ''}
+                            ${seller.address?.state ? seller.address.state : ''}
+                            ${seller.pincode ? ' - ' + seller.pincode : ''}
+                        </div>
+                        ${seller.phone ? `<div>📞 ${seller.phone}</div>` : ''}
+                        ${seller.gstNumber ? `<div>🏢 GST: ${seller.gstNumber}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        async function fetchNearbySellers(lat, lng, radius = 5) {
+            try {
+                showStatus('🔍 Searching for nearby sellers...', 'loading');
+                
+                const url = `${API_BASE_URL}?lat=${lat}&lng=${lng}&radius=${radius}`;
+                console.log('Fetching:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(`✅ Found ${data.count} sellers within ${radius}km`, 'success');
+                    showCoordinates(lat, lng);
+                    showResults(data.data);
+                } else {
+                    showStatus(`❌ Error: ${data.error}`, 'error');
+                    resultsDiv.innerHTML = '';
+                }
+            } catch (error) {
+                showStatus(`❌ Network Error: ${error.message}`, 'error');
+                resultsDiv.innerHTML = '';
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showStatus('❌ Geolocation is not supported by this browser.', 'error');
+                return;
+            }
+
+            showStatus('📍 Getting your location...', 'loading');
+            getLocationBtn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    getLocationBtn.disabled = false;
+                    fetchNearbySellers(lat, lng);
+                },
+                (error) => {
+                    getLocationBtn.disabled = false;
+                    let errorMessage = '❌ Error getting location: ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Permission denied. Please allow location access.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'Unknown error occurred.';
+                            break;
+                    }
+                    showStatus(errorMessage, 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes
+                }
+            );
+        }
+
+        function testWithDelhi() {
+            // Delhi, India coordinates
+            const lat = 28.6139;
+            const lng = 77.2090;
+            fetchNearbySellers(lat, lng);
+        }
+
+        function clearResults() {
+            statusDiv.innerHTML = '';
+            coordinatesDiv.innerHTML = '';
+            resultsDiv.innerHTML = '';
+        }
+
+        // Event listeners
+        getLocationBtn.addEventListener('click', getCurrentLocation);
+        testLocationBtn.addEventListener('click', testWithDelhi);
+        clearBtn.addEventListener('click', clearResults);
+
+        // Show initial instructions
+        showStatus('👆 Click "Get My Location" to find nearby sellers or "Test with Delhi" to try with sample coordinates.', 'loading');
+    </script>
+</body>
+</html>

@@ -31,62 +31,33 @@ const AdminLayout = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/admin/dashboard',
-      icon: HomeIcon,
-      current: location.pathname === '/admin/dashboard'
-    },
-    {
-      name: 'Homepage Sections',
-      href: '/admin/homepage-sections',
-      icon: Squares2X2Icon,
-      current: location.pathname === '/admin/homepage-sections'
-    },
-    {
-      name: 'Banners',
-      href: '/admin/banners',
-      icon: PhotoIcon,
-      current: location.pathname === '/admin/banners'
-    },
-    {
-      name: 'Products',
-      href: '/admin/products',
-      icon: ShoppingBagIcon,
-      current: location.pathname === '/admin/products'
-    },
-    {
-      name: 'Orders',
-      href: '/admin/orders',
-      icon: ChartBarIcon,
-      current: location.pathname === '/admin/orders'
-    },
-    {
-      name: 'Users',
-      href: '/admin/users',
-      icon: UsersIcon,
-      current: location.pathname === '/admin/users'
-    },
-    {
-      name: 'Sellers',
-      href: '/admin/sellers',
-      icon: UsersIcon,
-      current: location.pathname === '/admin/sellers'
-    },
-    {
-      name: 'Analytics',
-      href: '/admin/analytics',
-      icon: ChartBarIcon,
-      current: location.pathname === '/admin/analytics'
-    },
-    {
-      name: 'Settings',
-      href: '/admin/settings',
-      icon: Cog6ToothIcon,
-      current: location.pathname === '/admin/settings'
-    }
+  const basePath = (user?.role === 'seller') ? '/seller' : '/admin'
+
+  const allItems = [
+    { key: 'dashboard', name: 'Dashboard', path: 'dashboard', icon: HomeIcon },
+    { key: 'homepage', name: 'Homepage Sections', path: 'homepage-sections', icon: Squares2X2Icon },
+    { key: 'banners', name: 'Banners', path: 'banners', icon: PhotoIcon },
+    { key: 'products', name: 'Products', path: 'products', icon: ShoppingBagIcon },
+    { key: 'orders', name: 'Orders', path: 'orders', icon: ChartBarIcon },
+    { key: 'users', name: 'Users', path: 'users', icon: UsersIcon },
+    { key: 'sellers', name: 'Sellers', path: 'sellers', icon: UsersIcon },
+    { key: 'analytics', name: 'Analytics', path: 'analytics', icon: ChartBarIcon },
+    { key: 'settings', name: 'Settings', path: 'settings', icon: Cog6ToothIcon },
   ]
+
+  // For sellers, hide homepage sections, banners, users, sellers, dashboard, analytics
+  const visibleKeys = (user?.role === 'seller')
+    ? ['products', 'orders', 'settings']
+    : allItems.map(i => i.key)
+
+  const navigation = allItems
+    .filter(i => visibleKeys.includes(i.key))
+    .map(i => ({
+      name: i.name,
+      href: `${basePath}/${i.path}`,
+      icon: i.icon,
+      current: location.pathname === `${basePath}/${i.path}` || (i.path === 'dashboard' && location.pathname === basePath)
+    }))
 
   const handleLogout = () => {
     dispatch(logout())
@@ -106,9 +77,9 @@ const AdminLayout = () => {
       <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">A</span>
+            <span className="text-white font-bold text-sm">{user?.role === 'seller' ? 'S' : 'A'}</span>
           </div>
-          <span className="text-xl font-bold text-gray-900">Admin Panel</span>
+          <span className="text-xl font-bold text-gray-900">{user?.role === 'seller' ? 'Seller Admin' : 'Admin Panel'}</span>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}
@@ -217,7 +188,7 @@ const AdminLayout = () => {
                 <Bars3Icon className="h-6 w-6 text-gray-600" />
               </button>
               <h1 className="ml-4 text-2xl font-semibold text-gray-900">
-                {navigation.find(item => item.current)?.name || 'Admin Panel'}
+                {user?.role === 'seller' ? 'Seller Admin' : (navigation.find(item => item.current)?.name || 'Admin Panel')}
               </h1>
             </div>
 
@@ -238,7 +209,7 @@ const AdminLayout = () => {
                   <p className="text-sm font-medium text-gray-900">
                     {user?.name || 'Admin User'}
                   </p>
-                  <p className="text-xs text-gray-500">Administrator</p>
+                  <p className="text-xs text-gray-500">{user?.role === 'seller' ? 'Seller' : 'Administrator'}</p>
                 </div>
               </div>
             </div>

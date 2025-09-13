@@ -19,6 +19,7 @@ import vendorReducer from '../features/vendor/vendorSlice'
 import sellerReducer from '../features/seller/sellerSlice'
 import homepageSectionReducer from '../features/homepageSections/homepageSectionSlice'
 import bannerReducer from '../features/banners/bannerSlice'
+import wishlistReducer from '../features/wishlist/wishlistSlice'
 
 // Persist configuration
 const persistConfig = {
@@ -39,6 +40,7 @@ const rootReducer = combineReducers({
   seller: sellerReducer,
   homepageSections: homepageSectionReducer,
   banners: bannerReducer,
+  wishlist: wishlistReducer,
 })
 
 // Persisted reducer

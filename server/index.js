@@ -30,11 +30,13 @@ import adminRoutes from './routes/adminRoutes.js'
 import vendorRoutes from './routes/vendorRoutes.js'
 import sellerRoutes from './routes/sellerRoutes.js'
 import sellerProductRoutes from './routes/sellerProductRoutes.js'
+import sellerDetailsRoutes from './routes/sellerDetailsRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import homepageSectionRoutes from './routes/homepageSectionRoutes.js'
 import adminHomepageSectionRoutes from './routes/adminHomepageSectionRoutes.js'
 import bannerRoutes from './routes/bannerRoutes.js'
 import adminBannerRoutes from './routes/adminBannerRoutes.js'
+import wishlistRoutes from './routes/wishlistRoutes.js'
 
 // Load environment variables
 dotenv.config()
@@ -197,11 +199,13 @@ app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/vendor', vendorRoutes)
 app.use('/api/v1/sellers', sellerRoutes)
 app.use('/api/v1/seller/products', sellerProductRoutes)
+app.use('/api/v1/seller-details', sellerDetailsRoutes)
 app.use('/api/v1/payments', paymentRoutes)
 app.use('/api/v1/homepage-sections', homepageSectionRoutes)
 app.use('/api/v1/admin/homepage-sections', adminHomepageSectionRoutes)
 app.use('/api/v1/banners', bannerRoutes)
 app.use('/api/v1/admin/banners', adminBannerRoutes)
+app.use('/api/v1/wishlist', wishlistRoutes)
 
 // API Documentation JSON endpoint
 app.get('/api-docs.json', (req, res) => {

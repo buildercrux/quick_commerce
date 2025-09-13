@@ -15,6 +15,7 @@ import {
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useDispatch, useSelector } from 'react-redux'
 import { addToCart } from '../../features/cart/cartSlice'
+import WishlistButton from '../ui/WishlistButton'
 import toast from 'react-hot-toast'
 
 const ProductSection = ({ 
@@ -76,13 +77,11 @@ const ProductSection = ({
               <EyeIcon className="h-5 w-5 text-gray-700" />
             </motion.button>
             
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50 transition-colors"
-            >
-              <HeartIcon className="h-5 w-5 text-gray-700" />
-            </motion.button>
+            <WishlistButton 
+              productId={product._id} 
+              size="md"
+              className="shadow-lg"
+            />
           </div>
         </div>
 
@@ -115,9 +114,13 @@ const ProductSection = ({
         </div>
 
         {/* Wishlist Button */}
-        <button className="absolute top-4 right-4 w-8 h-8 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-colors">
-          <HeartIcon className="h-4 w-4 text-gray-600" />
-        </button>
+        <div className="absolute top-4 right-4">
+          <WishlistButton 
+            productId={product._id} 
+            size="sm"
+            className="bg-white/80 hover:bg-white"
+          />
+        </div>
       </div>
 
       {/* Product Info */}
@@ -162,6 +165,36 @@ const ProductSection = ({
             )}
           </div>
         </div>
+
+        {/* Seller Information */}
+        {product.seller && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {product.seller.sellerDetails?.sellerName || product.seller.name}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {product.seller.sellerDetails?.address?.city && product.seller.sellerDetails?.address?.state 
+                    ? `${product.seller.sellerDetails.address.city}, ${product.seller.sellerDetails.address.state}`
+                    : 'Professional Seller'
+                  }
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center space-x-1">
+                  <StarIcon className="h-3 w-3 text-yellow-400 fill-current" />
+                  <span className="text-xs text-gray-600">
+                    {product.seller.sellerDetails?.phone ? 'Verified' : 'Seller'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {product.seller.sellerDetails?.gstNumber ? 'GST Registered' : 'Individual Seller'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Add to Cart Button */}
         <motion.button

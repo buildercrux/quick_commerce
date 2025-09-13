@@ -25,6 +25,7 @@ const HomePage = React.lazy(() => import('./pages/HomePage'))
 const ProductsPage = React.lazy(() => import('./pages/ProductsPage'))
 const ProductDetailPage = React.lazy(() => import('./pages/ProductDetailPage'))
 const CartPage = React.lazy(() => import('./pages/CartPage'))
+const WishlistPage = React.lazy(() => import('./pages/WishlistPage'))
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage'))
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'))
 const RegisterPage = React.lazy(() => import('./pages/auth/RegisterPage'))
@@ -51,6 +52,8 @@ const SellerRegisterPage = React.lazy(() => import('./pages/seller/RegisterPage'
 const SellerLoginPage = React.lazy(() => import('./pages/seller/LoginPage'))
 const SellerDashboard = React.lazy(() => import('./pages/seller/Dashboard'))
 const SellerProducts = React.lazy(() => import('./pages/seller/Products'))
+const TestSellerNearby = React.lazy(() => import('./pages/TestSellerNearby'))
+const SellerPage = React.lazy(() => import('./pages/SellerPage'))
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'))
 
 function App() {
@@ -77,7 +80,10 @@ function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/debug" element={<APITest />} />
+            <Route path="/testsellernearby" element={<TestSellerNearby />} />
+            <Route path="/seller/:sellerId" element={<SellerPage />} />
             
             {/* Auth Routes */}
             <Route 
@@ -150,21 +156,29 @@ function App() {
                 <VendorAnalytics />
               </RoleRoute>
             } />
-            {/* Seller Routes */}
-            <Route path="/seller/dashboard" element={
-              <RoleRoute allowedRoles={['seller', 'vendor', 'admin']}>
-                <SellerDashboard />
-              </RoleRoute>
-            } />
-            <Route path="/seller/products" element={
-              <RoleRoute allowedRoles={['seller', 'vendor', 'admin']}>
-                <SellerProducts />
-              </RoleRoute>
-            } />
+            {/* Seller Routes (handled below with AdminLayout for identical UI) */}
             
             {/* Admin Routes */}
             <Route path="/admin" element={
               <RoleRoute allowedRoles={['admin']}>
+                <AdminLayout />
+              </RoleRoute>
+            }>
+              <Route index element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="sellers" element={<AdminSellers />} />
+              <Route path="products" element={<AdminProducts />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="homepage-sections" element={<AdminHomepageSections />} />
+              <Route path="banners" element={<AdminBanners />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
+
+            {/* Seller uses same Admin UI */}
+            <Route path="/seller" element={
+              <RoleRoute allowedRoles={['seller']}>
                 <AdminLayout />
               </RoleRoute>
             }>

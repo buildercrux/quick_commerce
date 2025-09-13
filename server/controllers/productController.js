@@ -4,6 +4,9 @@
  */
 
 import Product from '../models/Product.js'
+import Seller from '../models/Seller.js'
+import User from '../models/User.js'
+import SellerDetails from '../models/SellerDetails.js'
 import { validationResult } from 'express-validator'
 import { v2 as cloudinary } from 'cloudinary'
 
@@ -218,6 +221,15 @@ export const getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate('vendor', 'name email vendorProfile.businessName')
+      .populate({
+        path: 'seller',
+        select: 'name email role',
+        populate: {
+          path: 'sellerDetails',
+          model: 'SellerDetails',
+          select: 'sellerName phone address location pincode gstNumber'
+        }
+      })
 
     if (!product) {
       return res.status(404).json({
@@ -292,6 +304,150 @@ export const getProductsByIds = async (req, res, next) => {
       success: true,
       data: products
     })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * @desc    Get products by user ID (seller)
+ * @route   GET /api/v1/products/seller/:userId
+ * @access  Public
+ */
+export const getProductsBySeller = async (req, res, next) => {
+  try {
+    const { sellerId: userId } = req.params
+    const {
+      page = 1,
+      limit = 20,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy = 'newest',
+      search
+    } = req.query
+
+    console.log('🔍 Fetching products for user ID:', userId)
+
+    // Validate userId
+    if (!userId || !userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user ID'
+      })
+    }
+
+    // Build query - products are linked to user field
+    let query = { 
+      user: userId,
+      status: 'active' // Only show active products
+    }
+
+    console.log('📊 Query for products:', query)
+
+    // Category filter
+    if (category) {
+      query.category = category
+    }
+
+    // Price filters
+    if (minPrice || maxPrice) {
+      query.price = {}
+      if (minPrice) query.price.$gte = parseFloat(minPrice)
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice)
+    }
+
+    // Search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ]
+    }
+
+    // Sort options
+    let sort = {}
+    switch (sortBy) {
+      case 'newest':
+        sort = { createdAt: -1 }
+        break
+      case 'oldest':
+        sort = { createdAt: 1 }
+        break
+      case 'price_low':
+        sort = { price: 1 }
+        break
+      case 'price_high':
+        sort = { price: -1 }
+        break
+      case 'rating':
+        sort = { averageRating: -1 }
+        break
+      case 'popular':
+        sort = { salesCount: -1 }
+        break
+      default:
+        sort = { createdAt: -1 }
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+     
+    let query1 = {seller: userId}
+    // Get products with user information
+    const products = await Product.find(query1)
+    .populate('seller', 'name storeName')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit))
+
+    const total = await Product.countDocuments(query1)
+
+    // Get user information and seller details
+    const user = await User.findById(userId).select('name email')
+    const sellerDetails = await SellerDetails.findOne({ user: userId })
+
+    console.log('👤 User found:', user)
+    console.log('🏪 Seller details found:', sellerDetails)
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      })
+    }
+
+    const response = {
+      success: true,
+      data: products,
+      seller: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        sellerName: sellerDetails?.sellerName || user.name,
+        phone: sellerDetails?.phone,
+        address: sellerDetails?.address,
+        location: sellerDetails?.location,
+        pincode: sellerDetails?.pincode,
+        gstNumber: sellerDetails?.gstNumber
+      },
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    }
+
+    console.log('📤 Final response:', JSON.stringify(response, null, 2))
+    console.log('📈 Response summary:', {
+      success: response.success,
+      productsCount: products.length,
+      totalProducts: total,
+      sellerName: response.seller.sellerName
+    })
+
+    res.status(200).json(response)
   } catch (error) {
     next(error)
   }
@@ -469,7 +625,9 @@ export const createProduct = async (req, res, next) => {
 
     const productData = {
       ...req.body,
-      vendor: req.user._id
+      vendor: req.user._id,
+      // If the creator is a seller, also link the seller field
+      ...(req.user.role === 'seller' ? { seller: req.user._id } : {})
     }
 
     // Validate delivery options - at least one must be true
@@ -612,7 +770,12 @@ export const updateProduct = async (req, res, next) => {
     }
 
     // Check ownership
-    if (product.vendor.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (
+      product.vendor.toString() !== req.user._id.toString() &&
+      // allow sellers to update their own product via seller linkage
+      !(req.user.role === 'seller' && product.seller?.toString() === req.user._id.toString()) &&
+      req.user.role !== 'admin'
+    ) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to update this product'
@@ -764,7 +927,11 @@ export const deleteProduct = async (req, res, next) => {
     }
 
     // Check ownership
-    if (product.vendor.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (
+      product.vendor.toString() !== req.user._id.toString() &&
+      !(req.user.role === 'seller' && product.seller?.toString() === req.user._id.toString()) &&
+      req.user.role !== 'admin'
+    ) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to delete this product'

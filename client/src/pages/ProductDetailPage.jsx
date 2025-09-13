@@ -21,6 +21,7 @@ import {
 import { fetchProduct, clearCurrentProduct } from '../features/products/productSlice'
 import { addToCart } from '../features/cart/cartSlice'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import WishlistButton from '../components/ui/WishlistButton'
 
 const ProductDetailPage = () => {
   const { id } = useParams()
@@ -126,7 +127,7 @@ const ProductDetailPage = () => {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {currentProduct.title}
+                {currentProduct.name}
               </h1>
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center">
@@ -147,7 +148,7 @@ const ProductDetailPage = () => {
                   </span>
                 </div>
                 <span className="text-sm text-gray-500">
-                  Sold by {currentProduct.owner?.vendorProfile?.businessName || currentProduct.owner?.name}
+                  Sold by {currentProduct.seller?.sellerDetails?.sellerName || currentProduct.seller?.name || currentProduct.vendor?.vendorProfile?.businessName || currentProduct.vendor?.name || 'Unknown Seller'}
                 </span>
               </div>
             </div>
@@ -155,15 +156,15 @@ const ProductDetailPage = () => {
             {/* Price */}
             <div className="flex items-center gap-4">
               <span className="text-3xl font-bold text-primary-600">
-                ${currentProduct.price}
+                ₹{currentProduct.price?.toLocaleString() || '0'}
               </span>
-              {currentProduct.originalPrice && currentProduct.originalPrice > currentProduct.price && (
+              {currentProduct.comparePrice && currentProduct.comparePrice > currentProduct.price && (
                 <>
                   <span className="text-xl text-gray-500 line-through">
-                    ${currentProduct.originalPrice}
+                    ₹{currentProduct.comparePrice?.toLocaleString() || '0'}
                   </span>
                   <span className="bg-error-100 text-error-800 px-2 py-1 rounded-full text-sm font-semibold">
-                    Save ${currentProduct.originalPrice - currentProduct.price}
+                    Save ₹{((currentProduct.comparePrice || 0) - (currentProduct.price || 0)).toLocaleString()}
                   </span>
                 </>
               )}
@@ -171,19 +172,26 @@ const ProductDetailPage = () => {
 
             {/* Stock Status */}
             <div className="flex items-center gap-2">
-              {currentProduct.stock > 0 ? (
-                <>
-                  <div className="w-3 h-3 bg-success-500 rounded-full"></div>
-                  <span className="text-success-600 font-medium">
-                    In Stock ({currentProduct.stock} available)
-                  </span>
-                </>
-              ) : (
-                <>
-                  <div className="w-3 h-3 bg-error-500 rounded-full"></div>
-                  <span className="text-error-600 font-medium">Out of Stock</span>
-                </>
-              )}
+              {(() => {
+                const isInStock = currentProduct.inventory?.trackQuantity !== false 
+                  ? (currentProduct.inventory?.quantity || 0) > 0
+                  : true
+                const stockQuantity = currentProduct.inventory?.quantity || 0
+                
+                return isInStock ? (
+                  <>
+                    <div className="w-3 h-3 bg-success-500 rounded-full"></div>
+                    <span className="text-success-600 font-medium">
+                      In Stock {currentProduct.inventory?.trackQuantity !== false ? `(${stockQuantity} available)` : ''}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-3 h-3 bg-error-500 rounded-full"></div>
+                    <span className="text-error-600 font-medium">Out of Stock</span>
+                  </>
+                )
+              })()}
             </div>
 
             {/* Quantity and Add to Cart */}
@@ -203,7 +211,10 @@ const ProductDetailPage = () => {
                   </span>
                   <button
                     onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= (currentProduct.inventory?.quantity || 0)}
+                    disabled={
+                      currentProduct.inventory?.trackQuantity !== false && 
+                      quantity >= (currentProduct.inventory?.quantity || 0)
+                    }
                     className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="h-4 w-4" />
@@ -249,9 +260,11 @@ const ProductDetailPage = () => {
                     : 'Add to Cart'
                   }
                 </button>
-                <button className="btn-outline btn-lg p-3">
-                  <Heart className="h-5 w-5" />
-                </button>
+                <WishlistButton 
+                  productId={product._id} 
+                  size="lg"
+                  className="btn-outline btn-lg p-3"
+                />
                 <button className="btn-outline btn-lg p-3">
                   <Share2 className="h-5 w-5" />
                 </button>
@@ -282,6 +295,81 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Seller Information */}
+            {currentProduct.seller && (
+              <div className="mt-8 p-6 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Seller Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      {currentProduct.seller.sellerDetails?.sellerName || currentProduct.seller.name}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-3">Professional seller on our platform</p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <span className="font-medium w-20">Contact:</span>
+                        <span>{currentProduct.seller.sellerDetails?.sellerName || currentProduct.seller.name}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <span className="font-medium w-20">Email:</span>
+                        <span>{currentProduct.seller.email}</span>
+                      </div>
+                      {currentProduct.seller.sellerDetails?.phone && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <span className="font-medium w-20">Phone:</span>
+                          <span>{currentProduct.seller.sellerDetails.phone}</span>
+                        </div>
+                      )}
+                      {currentProduct.seller.sellerDetails?.address && (
+                        <div className="flex items-start text-sm text-gray-600">
+                          <span className="font-medium w-20">Address:</span>
+                          <span>
+                            {currentProduct.seller.sellerDetails.address.street}, {currentProduct.seller.sellerDetails.address.city}, 
+                            {currentProduct.seller.sellerDetails.address.state} {currentProduct.seller.sellerDetails.address.pincode}, 
+                            {currentProduct.seller.sellerDetails.address.country}
+                          </span>
+                        </div>
+                      )}
+                      {currentProduct.seller.sellerDetails?.gstNumber && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <span className="font-medium w-20">GST:</span>
+                          <span>{currentProduct.seller.sellerDetails.gstNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Seller Details</h4>
+                    <div className="space-y-4">
+                      <div className="p-3 bg-white rounded-lg">
+                        <div className="text-sm text-gray-600 mb-1">Seller Name</div>
+                        <div className="font-medium text-gray-900">
+                          {currentProduct.seller.sellerDetails?.sellerName || 'Not provided'}
+                        </div>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg">
+                        <div className="text-sm text-gray-600 mb-1">Location</div>
+                        <div className="font-medium text-gray-900">
+                          {currentProduct.seller.sellerDetails?.address?.city && currentProduct.seller.sellerDetails?.address?.state 
+                            ? `${currentProduct.seller.sellerDetails.address.city}, ${currentProduct.seller.sellerDetails.address.state}`
+                            : 'Not provided'
+                          }
+                        </div>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg">
+                        <div className="text-sm text-gray-600 mb-1">Pincode</div>
+                        <div className="font-medium text-gray-900">
+                          {currentProduct.seller.sellerDetails?.pincode || 'Not provided'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

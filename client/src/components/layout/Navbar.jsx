@@ -29,7 +29,8 @@ import {
   HomeIcon as HomeCategoryIcon,
   HeartIcon as BeautyIcon,
   BookOpenIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline'
 import { logout } from '../../features/auth/authSlice'
 import authAPI from '../../services/authAPI'
@@ -41,6 +42,7 @@ const Navbar = () => {
   const location = useLocation()
   const { user, isAuthenticated } = useSelector((state) => state.auth)
   const { cartItems } = useSelector((state) => state.cart || { cartItems: [] })
+  const { wishlistCount } = useSelector((state) => state.wishlist || { wishlistCount: 0 })
   
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -168,6 +170,16 @@ const Navbar = () => {
                 Products
             </NavLink>
             
+            <NavLink to="/testsellernearby" icon={<MapPinIcon />}>
+                Test Nearby
+            </NavLink>
+            
+            {user?.role === 'seller' && (
+              <NavLink to="/seller/dashboard" icon={<BuildingStorefrontIcon />}>
+                Seller Admin
+              </NavLink>
+            )}
+
               {user?.role === 'admin' && (
               <NavLink to="/admin" icon={<Cog6ToothIcon />}>
                   Admin
@@ -238,6 +250,21 @@ const Navbar = () => {
               )}
             </motion.button>
 
+            {/* Wishlist */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/wishlist')}
+              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+            >
+              <HeartIcon className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium">
+                  {wishlistCount}
+                </span>
+              )}
+            </motion.button>
+
             {/* User Menu */}
             {isAuthenticated ? (
               <div className="relative">
@@ -282,6 +309,11 @@ const Navbar = () => {
                         <NavLink to="/orders" icon={<BellIcon />} onClick={() => setIsUserMenuOpen(false)}>
                     Orders
                         </NavLink>
+                        {user?.role === 'seller' && (
+                          <NavLink to="/seller/dashboard" icon={<BuildingStorefrontIcon />} onClick={() => setIsUserMenuOpen(false)}>
+                            Seller Admin
+                          </NavLink>
+                        )}
                   {user?.role === 'admin' && (
                           <NavLink to="/admin" icon={<Cog6ToothIcon />} onClick={() => setIsUserMenuOpen(false)}>
                       Admin Panel
@@ -410,6 +442,16 @@ const Navbar = () => {
                 <NavLink to="/products" icon={<BuildingStorefrontIcon />} onClick={() => setIsMenuOpen(false)}>
                   All Products
                 </NavLink>
+                
+                <NavLink to="/testsellernearby" icon={<MapPinIcon />} onClick={() => setIsMenuOpen(false)}>
+                  Test Nearby
+                </NavLink>
+                
+              {user?.role === 'seller' && (
+                  <NavLink to="/seller/dashboard" icon={<BuildingStorefrontIcon />} onClick={() => setIsMenuOpen(false)}>
+                  Seller Admin
+                  </NavLink>
+              )}
                 
               {user?.role === 'admin' && (
                   <NavLink to="/admin" icon={<Cog6ToothIcon />} onClick={() => setIsMenuOpen(false)}>

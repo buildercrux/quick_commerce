@@ -26,6 +26,7 @@ import DynamicSections from '../components/homepage/DynamicSections'
 import BannerCarousel from '../components/layout/BannerCarousel'
 import DeliveryOptions from '../components/layout/DeliveryOptions'
 import FilteredProductsDisplay from '../components/homepage/FilteredProductsDisplay'
+import NearbySellers from '../components/homepage/NearbySellers'
 
 const HomePage = () => {
   const dispatch = useDispatch()
@@ -219,6 +220,9 @@ const HomePage = () => {
             </div>
           </div>
         </section>
+
+        {/* Nearby Sellers Section */}
+        <NearbySellers />
 
         {/* Banner Carousel */}
         <section className="py-16 bg-white">

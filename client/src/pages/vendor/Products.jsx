@@ -140,7 +140,7 @@ const VendorProducts = () => {
                       {product.title}
                     </h3>
                     <p className="text-lg font-semibold text-primary-600 mb-3">
-                      ${product.price}
+                      ₹{product.price?.toLocaleString()}
                     </p>
                     
                     <div className="flex items-center justify-between">

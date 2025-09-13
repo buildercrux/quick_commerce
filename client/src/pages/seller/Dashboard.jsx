@@ -16,6 +16,7 @@ import {
   ArrowDownIcon
 } from '@heroicons/react/24/outline'
 import { getSellerDashboardStats } from '../../features/seller/sellerSlice'
+import sellerAPI from '../../services/sellerAPI'
 import { toast } from 'react-hot-toast'
 
 const SellerDashboard = () => {
@@ -23,10 +24,18 @@ const SellerDashboard = () => {
   const { user } = useSelector(state => state.auth)
   const { dashboardStats, loading } = useSelector(state => state.seller)
 
-  const [stats, setStats] = useState({
+  const statsDefault = {
     products: { total: 0, active: 0 },
     orders: { total: 0, today: 0, revenue: { total: 0, today: 0 } },
     recentOrders: []
+  }
+  const [stats, setStats] = useState(statsDefault)
+  const [sellerDetails, setSellerDetails] = useState(null)
+  const [detailsForm, setDetailsForm] = useState({
+    sellerName: '',
+    phone: '',
+    address: { street: '', city: '', state: '', pincode: '', country: 'India' },
+    pincode: '',
   })
 
   useEffect(() => {
@@ -37,9 +46,46 @@ const SellerDashboard = () => {
 
   useEffect(() => {
     if (dashboardStats) {
-      setStats(dashboardStats)
+      // API returns { success, data } – use data payload only
+      setStats(dashboardStats.data || statsDefault)
     }
   }, [dashboardStats])
+
+  useEffect(() => {
+    // Load seller details
+    const loadDetails = async () => {
+      try {
+        const { data } = await sellerAPI.getSellerDetails()
+        if (data?.data) {
+          setSellerDetails(data.data)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    if (user?.role === 'seller') loadDetails()
+  }, [user])
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target
+    if (name.startsWith('address.')) {
+      const key = name.split('.')[1]
+      setDetailsForm((prev) => ({ ...prev, address: { ...prev.address, [key]: value } }))
+    } else {
+      setDetailsForm((prev) => ({ ...prev, [name]: value }))
+    }
+  }
+
+  const handleSaveDetails = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = { ...detailsForm, pincode: detailsForm.address.pincode }
+      const { data } = await sellerAPI.upsertSellerDetails(payload)
+      setSellerDetails(data.data)
+    } catch (err) {
+      // optionally toast
+    }
+  }
 
   const StatCard = ({ title, value, change, changeType, icon: Icon, color = 'blue' }) => (
     <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -110,6 +156,48 @@ const SellerDashboard = () => {
     )
   }
 
+  // First-time seller profile setup UI
+  if (user?.role === 'seller' && !sellerDetails) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto py-10 px-4">
+          <h2 className="text-2xl font-bold mb-6">Complete your seller profile</h2>
+          <form onSubmit={handleSaveDetails} className="bg-white p-6 rounded-lg shadow space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Seller Name</label>
+              <input name="sellerName" value={detailsForm.sellerName} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <input name="phone" value={detailsForm.phone} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Street</label>
+                <input name="address.street" value={detailsForm.address.street} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">City</label>
+                <input name="address.city" value={detailsForm.address.city} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">State</label>
+                <input name="address.state" value={detailsForm.address.state} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Pincode</label>
+                <input name="address.pincode" value={detailsForm.address.pincode} onChange={handleFormChange} className="mt-1 w-full border rounded px-3 py-2" />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -142,25 +230,25 @@ const SellerDashboard = () => {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <StatCard
             title="Total Products"
-            value={stats.products.total}
+            value={stats.products?.total ?? 0}
             icon={ShoppingBagIcon}
             color="blue"
           />
           <StatCard
             title="Active Products"
-            value={stats.products.active}
+            value={stats.products?.active ?? 0}
             icon={EyeIcon}
             color="green"
           />
           <StatCard
             title="Total Orders"
-            value={stats.orders.total}
+            value={stats.orders?.total ?? 0}
             icon={ChartBarIcon}
             color="purple"
           />
           <StatCard
             title="Today's Revenue"
-            value={`₹${stats.orders.revenue.today.toLocaleString()}`}
+            value={`₹${(stats.orders?.revenue?.today ?? 0).toLocaleString()}`}
             icon={CurrencyDollarIcon}
             color="yellow"
           />

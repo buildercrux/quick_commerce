@@ -17,6 +17,10 @@ const sellerAPI = {
   
   // Dashboard
   getDashboardStats: () => api.get('/sellers/dashboard'),
+ 
+  // Seller details (linked to user)
+  getSellerDetails: () => api.get('/seller-details/me'),
+  upsertSellerDetails: (details) => api.put('/seller-details/me', details),
   
   // Products
   getProducts: (params = {}) => api.get('/seller/products', { params }),

@@ -11,6 +11,7 @@ import {
   getProducts,
   getProduct,
   getProductsByIds,
+  getProductsBySeller,
   getFeaturedProducts,
   getCategories,
   searchProducts,
@@ -125,6 +126,82 @@ router.get('/batch', [
     .notEmpty()
     .withMessage('Product IDs are required')
 ], getProductsByIds)
+
+/**
+ * @swagger
+ * /api/v1/products/seller/{sellerDetailsId}:
+ *   get:
+ *     summary: Get products by seller details ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: sellerDetailsId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller Details ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [newest, oldest, price_low, price_high, rating, popular]
+ *           default: newest
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Products retrieved successfully
+ *       404:
+ *         description: Seller details not found
+ *       400:
+ *         description: Invalid seller details ID
+ */
+router.get('/seller/:sellerId', [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
+  query('minPrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Min price must be a positive number'),
+  query('maxPrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Max price must be a positive number'),
+  query('sortBy')
+    .optional()
+    .isIn(['newest', 'oldest', 'price_low', 'price_high', 'rating', 'popular'])
+    .withMessage('Invalid sort option')
+], getProductsBySeller)
 
 /**
  * @swagger
@@ -267,7 +344,7 @@ router.get('/:id', optionalAuth, getProduct)
  *         description: Not authorized to create products
  */
 // Parse multipart before validation so validators see req.body
-router.post('/', protect, authorize('vendor', 'admin'), uploadMultiple('images', 10), [
+router.post('/', protect, authorize('seller', 'vendor', 'admin'), uploadMultiple('images', 10), [
   body('name')
     .trim()
     .isLength({ min: 1, max: 100 })
@@ -343,7 +420,7 @@ router.post('/', protect, authorize('vendor', 'admin'), uploadMultiple('images',
  *       404:
  *         description: Product not found
  */
-router.put('/:id', protect, authorize('vendor', 'admin'), uploadMultiple('images', 10), [
+router.put('/:id', protect, authorize('seller', 'vendor', 'admin'), uploadMultiple('images', 10), [
   body('name')
     .optional()
     .trim()
@@ -403,7 +480,7 @@ router.put('/:id', protect, authorize('vendor', 'admin'), uploadMultiple('images
  *       404:
  *         description: Product not found
  */
-router.delete('/:id', protect, authorize('vendor', 'admin'), deleteProduct)
+router.delete('/:id', protect, authorize('seller', 'vendor', 'admin'), deleteProduct)
 
 
 export default router

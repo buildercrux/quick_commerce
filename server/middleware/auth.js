@@ -36,49 +36,40 @@ export const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, JWT_SECRET)
 
-      // Determine principal type by role in token
-      if (decoded.role === 'seller') {
-        const seller = await Seller.findById(decoded.id).select('-password -refreshTokens')
-
-        if (!seller) {
-          return res.status(401).json({
-            success: false,
-            error: 'No seller found with this token'
-          })
-        }
-
-        if (seller.isSuspended) {
-          return res.status(401).json({
-            success: false,
-            error: 'Account is suspended'
-          })
-        }
-
-        // Attach seller principal
-        req.seller = seller
-        req.user = { ...seller.toObject(), role: 'seller' }
-      } else {
-        // Default to user principal
-        const user = await User.findById(decoded.id).select('-password -refreshTokens')
-
-        if (!user) {
-          return res.status(401).json({
-            success: false,
-            error: 'No user found with this token'
-          })
-        }
-
+      // First try to resolve a User principal by decoded.id
+      const user = await User.findById(decoded.id).select('-password -refreshTokens')
+      if (user) {
         if (user.isSuspended) {
-          return res.status(401).json({
-            success: false,
-            error: 'Account is suspended'
-          })
+          return res.status(401).json({ success: false, error: 'Account is suspended' })
         }
-
         req.user = user
+        // If this user has seller role, best-effort hydrate req.seller by email
+        if (user.role === 'seller') {
+          const sellerDoc = await Seller.findOne({ email: user.email.toLowerCase() }).select('-password -refreshTokens')
+          if (sellerDoc && !sellerDoc.isSuspended) {
+            req.seller = sellerDoc
+          }
+        }
+        return next()
       }
 
-      next()
+      // If no User found and token role is seller, it might be a Seller token
+      if (decoded.role === 'seller') {
+        const seller = await Seller.findById(decoded.id).select('-password -refreshTokens')
+        if (!seller) {
+          return res.status(401).json({ success: false, error: 'No seller found with this token' })
+        }
+        if (seller.isSuspended) {
+          return res.status(401).json({ success: false, error: 'Account is suspended' })
+        }
+        req.seller = seller
+        // Synthesize a minimal req.user for role checks
+        req.user = { _id: seller._id, email: seller.email, role: 'seller' }
+        return next()
+      }
+
+      // Neither a valid user nor seller principal found
+      return res.status(401).json({ success: false, error: 'Not authorized to access this route' })
     } catch (error) {
       return res.status(401).json({
         success: false,

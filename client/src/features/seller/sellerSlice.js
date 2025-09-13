@@ -191,7 +191,9 @@ const sellerSlice = createSlice({
       })
       .addCase(getSellerProducts.fulfilled, (state, action) => {
         state.loading = false
-        state.products = action.payload
+        state.products = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload?.data || [])
       })
       .addCase(getSellerProducts.rejected, (state, action) => {
         state.loading = false

@@ -159,7 +159,7 @@ const OrderDetailPage = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ₹{(item.price * item.quantity).toLocaleString()}
                         </p>
                         <p className="text-sm text-gray-600">
                           ${item.price} each
