@@ -6,9 +6,15 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+// Resolve API base URL (env override > production URL > dev proxy)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.PROD
+    ? 'https://quick-commerce-seven.vercel.app/api/v1'
+    : '/api/v1')
+
 // Create axios instance
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 15000,
   withCredentials: true,
   headers: {
@@ -18,7 +24,7 @@ const api = axios.create({
 
 // Create a separate instance for auth checks (no redirects)
 const authCheckApi = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {
