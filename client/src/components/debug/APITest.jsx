@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchProducts } from '../../features/products/productSlice'
+import api from '../../services/api'
 
 const APITest = () => {
   const dispatch = useDispatch()
@@ -15,8 +16,8 @@ const APITest = () => {
     // Test direct API call
     const testAPI = async () => {
       try {
-        const response = await fetch('/api/v1/products?limit=2')
-        const data = await response.json()
+        const response = await api.get('/products?limit=2')
+        const data = response.data
         setApiResponse(data)
         console.log('Direct API Response:', data)
       } catch (error) {

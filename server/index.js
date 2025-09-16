@@ -66,16 +66,21 @@ app.use(helmet({
 // CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+    const defaultAllowed = [
       'http://localhost:3000',
       'http://localhost:5173',
       'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173'
+      'http://127.0.0.1:5173',
+      // Production frontend and backend
+      'https://quick-commerce-g1od.vercel.app',
+      'https://quick-commerce-seven.vercel.app',
     ]
-    
+    const envAllowed = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || []
+    const allowedOrigins = [...new Set([...defaultAllowed, ...envAllowed])]
+
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true)
-    
+
     // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
