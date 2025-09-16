@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 // Resolve API base URL (env override > production URL > dev proxy)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   || (import.meta.env.PROD
-    ? 'https://quick-commerce-seven.vercel.app/api/v1'
+    ? 'https://quick-commerce-8e7s.onrender.com/api/v1'
     : '/api/v1')
 
 // Create axios instance
