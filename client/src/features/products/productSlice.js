@@ -55,7 +55,7 @@ export const fetchAllProducts = createAsyncThunk(
       if (params?.category) queryParams.append('category', params.category)
       if (params?.search) queryParams.append('search', params.search)
       
-      const response = await fetch(`/api/v1/admin/products?${queryParams}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/admin/products?${queryParams}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -143,7 +143,7 @@ export const updateProduct = createAsyncThunk(
     try {
       const response = await productAPI.updateProduct(id, productData)
       return response.data.data // Return the actual product data
-      console.log('Update product response:', response.data.data);
+     
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update product')
     }
