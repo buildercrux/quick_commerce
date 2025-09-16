@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: quick-commerce-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Set secrets in Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CLIENT_URL
+        value: https://quick-commerce-g1od.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: https://quick-commerce-g1od.vercel.app,https://quick-commerce-seven.vercel.app
+      - key: DEFAULT_DELIVERY_MODE
+        value: standard
