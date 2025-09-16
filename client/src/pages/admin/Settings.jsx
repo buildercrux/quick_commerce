@@ -6,7 +6,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import sellerAPI from '../../services/sellerAPI'
+import userAPI from '../../services/userAPI'
 import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
 import {
   Cog6ToothIcon,
   BellIcon,
@@ -38,6 +40,8 @@ const AdminSettings = () => {
     latitude: '',
     longitude: ''
   })
+
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -71,6 +75,7 @@ const AdminSettings = () => {
   const handleSave = () => {
     // Save settings logic here
     console.log('Settings saved:', settings)
+    toast.success('Settings saved')
   }
 
   const handleSellerSave = async () => {
@@ -88,8 +93,9 @@ const AdminSettings = () => {
       delete payload.longitude
       const { data } = await sellerAPI.upsertSellerDetails(payload)
       setSellerDetails(data.data)
+      toast.success('Seller details updated')
     } catch (e) {
-      // optionally toast
+      toast.error(e?.response?.data?.message || 'Failed to update seller details')
     }
   }
 
@@ -191,6 +197,7 @@ const AdminSettings = () => {
                 <KeyIcon className="h-6 w-6 text-gray-600" />
                 <h2 className="text-lg font-semibold text-gray-900">Seller Details</h2>
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Latitude</label>

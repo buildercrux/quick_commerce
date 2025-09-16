@@ -559,3 +559,85 @@ export const logoutSeller = async (req, res, next) => {
     next(error)
   }
 }
+
+/**
+ * @desc    Get seller feed data
+ * @route   GET /api/v1/sellers/:sellerId/feed
+ * @access  Public
+ */
+export const getSellerFeed = async (req, res, next) => {
+  try {
+    const { sellerId } = req.params
+
+    // Find seller
+    const seller = await Seller.findById(sellerId).select('name storeName avatar')
+    
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        error: 'Seller not found'
+      })
+    }
+
+    // Import Product model
+    const Product = (await import('../models/Product.js')).default
+
+    // Get seller's products with images
+    const products = await Product.find({ seller: sellerId })
+      .populate('seller', 'name storeName avatar')
+      .select('name images price likeCount liked')
+      .sort({ createdAt: -1 })
+      .limit(20)
+
+    // Mock data for banners and stories (in real app, these would come from database)
+    const banners = [
+      {
+        id: 1,
+        imgUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=400&fit=crop',
+        alt: 'Fashion Banner'
+      },
+      {
+        id: 2,
+        imgUrl: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&h=400&fit=crop',
+        alt: 'Lifestyle Banner'
+      }
+    ]
+
+    const stories = [
+      { id: 'my-feed', label: 'MY FEED', imgUrl: seller.avatar || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop' },
+      { id: 'kurtas', label: 'KURTAS', imgUrl: 'https://images.unsplash.com/photo-1594633312681-425a7b9569e2?w=150&h=150&fit=crop' },
+      { id: 'tops', label: 'TOPS', imgUrl: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=150&h=150&fit=crop' },
+      { id: 'dresses', label: 'DRESSES', imgUrl: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=150&h=150&fit=crop' },
+      { id: 'sarees', label: 'SAREES', imgUrl: 'https://images.unsplash.com/photo-1594633312681-425a7b9569e2?w=150&h=150&fit=crop' },
+      { id: 'jewelry', label: 'JEWELRY', imgUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=150&h=150&fit=crop' },
+      { id: 'bags', label: 'BAGS', imgUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=150&h=150&fit=crop' },
+      { id: 'shoes', label: 'SHOES', imgUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=150&h=150&fit=crop' }
+    ]
+
+    // Format products for frontend
+    const formattedProducts = products.map(product => ({
+      id: product._id,
+      seller: {
+        id: product.seller._id,
+        name: product.seller.storeName || product.seller.name,
+        avatarUrl: product.seller.avatar
+      },
+      title: product.name,
+      images: product.images || [],
+      price: product.price,
+      likeCount: product.likeCount || 0,
+      liked: product.liked || false
+    }))
+
+    res.status(200).json({
+      success: true,
+      data: {
+        banners,
+        stories,
+        products: formattedProducts
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+}

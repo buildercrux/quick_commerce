@@ -23,10 +23,10 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline'
 import { 
-  addToCart, 
-  removeFromCart, 
-  updateQuantity, 
-  clearCart,
+  addToCartSmart as addToCart, 
+  removeFromCartSmart as removeFromCart, 
+  updateQuantitySmart as updateQuantity, 
+  clearCartSmart as clearCart,
   selectCartItemsWithStockStatus,
   selectCartError,
   clearError,

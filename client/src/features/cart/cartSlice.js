@@ -5,6 +5,124 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import productAPI from '../../services/productAPI.js'
+import cartAPI from '../../services/cartAPI.js'
+
+// Server cart thunks
+export const fetchServerCart = createAsyncThunk(
+  'cart/fetchServerCart',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await cartAPI.getMyCart()
+      return res.data.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch server cart')
+    }
+  }
+)
+
+export const replaceServerCart = createAsyncThunk(
+  'cart/replaceServerCart',
+  async (items, { rejectWithValue }) => {
+    try {
+      const payload = items.map(i => ({ product: i.product._id || i.product, quantity: i.quantity }))
+      const res = await cartAPI.replaceMyCart(payload)
+      return res.data.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to replace server cart')
+    }
+  }
+)
+
+export const addItemServer = createAsyncThunk(
+  'cart/addItemServer',
+  async ({ productId, quantity = 1 }, { rejectWithValue }) => {
+    try {
+      const res = await cartAPI.addItem(productId, quantity)
+      return res.data.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to add item to server cart')
+    }
+  }
+)
+
+export const updateItemServer = createAsyncThunk(
+  'cart/updateItemServer',
+  async ({ productId, quantity }, { rejectWithValue }) => {
+    try {
+      const res = await cartAPI.updateItem(productId, quantity)
+      return res.data.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update server cart item')
+    }
+  }
+)
+
+export const clearServerCart = createAsyncThunk(
+  'cart/clearServerCart',
+  async (_, { rejectWithValue }) => {
+    try {
+      await cartAPI.clear()
+      return true
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to clear server cart')
+    }
+  }
+)
+
+// Smart thunks: route to server when authenticated, otherwise local reducers
+export const addToCartSmart = (payload) => async (dispatch, getState) => {
+  const { auth } = getState()
+  const { product, quantity = 1 } = payload
+  if (auth?.isAuthenticated) {
+    try {
+      await dispatch(addItemServer({ productId: product._id, quantity }))
+    } catch {
+      // Fallback to local if server fails
+      dispatch(addToCart({ product, quantity }))
+    }
+  } else {
+    dispatch(addToCart({ product, quantity }))
+  }
+}
+
+export const updateQuantitySmart = ({ productId, quantity }) => async (dispatch, getState) => {
+  const { auth } = getState()
+  if (auth?.isAuthenticated) {
+    try {
+      await dispatch(updateItemServer({ productId, quantity }))
+    } catch {
+      dispatch(updateQuantity({ productId, quantity }))
+    }
+  } else {
+    dispatch(updateQuantity({ productId, quantity }))
+  }
+}
+
+export const removeFromCartSmart = (productId) => async (dispatch, getState) => {
+  const { auth } = getState()
+  if (auth?.isAuthenticated) {
+    try {
+      await dispatch(updateItemServer({ productId, quantity: 0 }))
+    } catch {
+      dispatch(removeFromCart(productId))
+    }
+  } else {
+    dispatch(removeFromCart(productId))
+  }
+}
+
+export const clearCartSmart = () => async (dispatch, getState) => {
+  const { auth } = getState()
+  if (auth?.isAuthenticated) {
+    try {
+      await dispatch(clearServerCart())
+    } catch {
+      dispatch(clearCart())
+    }
+  } else {
+    dispatch(clearCart())
+  }
+}
 
 // Helper functions
 const saveCartToStorage = (cartItems) => {
@@ -209,6 +327,67 @@ const cartSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Sync with server: fetch my cart
+      .addCase(fetchServerCart.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchServerCart.fulfilled, (state, action) => {
+        state.isLoading = false
+        const serverItems = (action.payload?.items || []).map(ci => ({
+          product: ci.product,
+          quantity: ci.quantity,
+          addedAt: ci.addedAt || new Date().toISOString(),
+        }))
+        state.items = serverItems
+        saveCartToStorage(state.items)
+      })
+      .addCase(fetchServerCart.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload
+      })
+      // Sync: replace server cart
+      .addCase(replaceServerCart.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(replaceServerCart.fulfilled, (state, action) => {
+        state.isLoading = false
+        const serverItems = (action.payload?.items || []).map(ci => ({
+          product: ci.product,
+          quantity: ci.quantity,
+          addedAt: ci.addedAt || new Date().toISOString(),
+        }))
+        state.items = serverItems
+        saveCartToStorage(state.items)
+      })
+      .addCase(replaceServerCart.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload
+      })
+      // Sync: add item to server
+      .addCase(addItemServer.fulfilled, (state, action) => {
+        const serverItems = (action.payload?.items || []).map(ci => ({
+          product: ci.product,
+          quantity: ci.quantity,
+          addedAt: ci.addedAt || new Date().toISOString(),
+        }))
+        state.items = serverItems
+        saveCartToStorage(state.items)
+      })
+      .addCase(updateItemServer.fulfilled, (state, action) => {
+        const serverItems = (action.payload?.items || []).map(ci => ({
+          product: ci.product,
+          quantity: ci.quantity,
+          addedAt: ci.addedAt || new Date().toISOString(),
+        }))
+        state.items = serverItems
+        saveCartToStorage(state.items)
+      })
+      .addCase(clearServerCart.fulfilled, (state) => {
+        state.items = []
+        saveCartToStorage(state.items)
+      })
       .addCase(refreshCartProducts.pending, (state) => {
         state.isLoading = true
         state.error = null

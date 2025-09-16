@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ThemeProvider } from '@mui/material/styles'
 import { CssBaseline } from '@mui/material'
 import { checkAuthStatus } from './features/auth/authSlice'
+import { fetchServerCart, replaceServerCart } from './features/cart/cartSlice'
 import theme from './theme/theme'
 
 // Layout Components
@@ -54,6 +55,7 @@ const SellerDashboard = React.lazy(() => import('./pages/seller/Dashboard'))
 const SellerProducts = React.lazy(() => import('./pages/seller/Products'))
 const TestSellerNearby = React.lazy(() => import('./pages/TestSellerNearby'))
 const SellerPage = React.lazy(() => import('./pages/SellerPage'))
+const SellerFeedPage = React.lazy(() => import('./pages/SellerFeedPage'))
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'))
 
 function App() {
@@ -67,6 +69,21 @@ function App() {
       dispatch(checkAuthStatus())
     }
   }, [dispatch])
+
+  // After auth status known, sync cart
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Merge local cart to server, then fetch
+      const localItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
+      if (localItems.length > 0) {
+        dispatch(replaceServerCart(localItems)).then(() => {
+          dispatch(fetchServerCart())
+        })
+      } else {
+        dispatch(fetchServerCart())
+      }
+    }
+  }, [isAuthenticated, dispatch])
 
   return (
     <ThemeProvider theme={theme}>
@@ -84,6 +101,7 @@ function App() {
             <Route path="/debug" element={<APITest />} />
             <Route path="/testsellernearby" element={<TestSellerNearby />} />
             <Route path="/seller/:sellerId" element={<SellerPage />} />
+            <Route path="/seller/:sellerId/feed" element={<SellerFeedPage />} />
             
             {/* Auth Routes */}
             <Route 

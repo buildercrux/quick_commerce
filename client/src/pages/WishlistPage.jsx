@@ -18,7 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { getWishlist, removeFromWishlist, clearWishlist } from '../features/wishlist/wishlistSlice'
-import { addToCart } from '../features/cart/cartSlice'
+import { addToCartSmart as addToCart } from '../features/cart/cartSlice'
 import { toast } from 'react-hot-toast'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -60,15 +60,7 @@ const WishlistPage = () => {
 
   const handleAddToCart = async (product) => {
     try {
-      await dispatch(addToCart({
-        product: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.images?.[0]?.url || '',
-        seller: product.seller?._id,
-        sellerName: product.seller?.name || 'Unknown Seller',
-        quantity: 1
-      })).unwrap()
+      await dispatch(addToCart({ product, quantity: 1 }))
       toast.success('Product added to cart')
     } catch (error) {
       toast.error(error || 'Failed to add product to cart')

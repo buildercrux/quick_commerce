@@ -37,6 +37,7 @@ import adminHomepageSectionRoutes from './routes/adminHomepageSectionRoutes.js'
 import bannerRoutes from './routes/bannerRoutes.js'
 import adminBannerRoutes from './routes/adminBannerRoutes.js'
 import wishlistRoutes from './routes/wishlistRoutes.js'
+import cartRoutes from './routes/cartRoutes.js'
 
 // Load environment variables
 dotenv.config()
@@ -206,6 +207,7 @@ app.use('/api/v1/admin/homepage-sections', adminHomepageSectionRoutes)
 app.use('/api/v1/banners', bannerRoutes)
 app.use('/api/v1/admin/banners', adminBannerRoutes)
 app.use('/api/v1/wishlist', wishlistRoutes)
+app.use('/api/v1/cart', cartRoutes)
 
 // API Documentation JSON endpoint
 app.get('/api-docs.json', (req, res) => {

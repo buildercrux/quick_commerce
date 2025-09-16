@@ -6,6 +6,7 @@
 import express from 'express'
 import { body } from 'express-validator'
 import { protect } from '../middleware/auth.js'
+import { uploadSingle, handleUploadError } from '../middleware/upload.js'
 import {
   getProfile,
   updateProfile,
@@ -123,7 +124,7 @@ router.put('/profile', [
  *       401:
  *         description: Not authorized
  */
-router.put('/avatar', updateAvatar)
+router.put('/avatar', uploadSingle('avatar'), handleUploadError, updateAvatar)
 
 /**
  * @swagger

@@ -159,11 +159,10 @@ const NearbySellers = () => {
 
   // Handle seller card click
   const handleSellerClick = (seller) => {
-    
-    // Navigate to seller page using the seller details ID
-    console.log('Seller clicked:', )
+    // Navigate to seller feed page using the seller details ID
+    console.log('Seller clicked:', seller)
     if (seller.user.id) {
-      navigate(`/seller/${seller.user.id}`)
+      navigate(`/seller/${seller.user.id}/feed`)
     }
   }
 

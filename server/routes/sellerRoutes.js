@@ -16,7 +16,8 @@ import {
   getSellers,
   getSeller,
   updateSellerStatus,
-  deleteSeller
+  deleteSeller,
+  getSellerFeed
 } from '../controllers/sellerController.js'
 import { protect, authorize } from '../middleware/auth.js'
 import { body } from 'express-validator'
@@ -154,6 +155,7 @@ const updateProfileValidation = [
 // Public routes
 router.post('/register', registerValidation, registerSeller)
 router.post('/login', loginValidation, loginSeller)
+router.get('/:sellerId/feed', getSellerFeed)
 
 // Protected routes (Seller only)
 router.use(protect) // All routes below this middleware are protected

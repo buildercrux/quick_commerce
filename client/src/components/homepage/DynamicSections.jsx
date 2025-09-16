@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useDispatch, useSelector } from 'react-redux'
-import { addToCart } from '../../features/cart/cartSlice'
+import { addToCartSmart as addToCart } from '../../features/cart/cartSlice'
 import toast from 'react-hot-toast'
 
 const DynamicSections = ({ sections = [] }) => {

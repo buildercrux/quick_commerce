@@ -19,9 +19,13 @@ import {
   Share2
 } from 'lucide-react'
 import { fetchProduct, clearCurrentProduct } from '../features/products/productSlice'
-import { addToCart } from '../features/cart/cartSlice'
+import { addToCartSmart as addToCart, clearError as clearCartError, selectCartError } from '../features/cart/cartSlice'
+import { toast } from 'react-hot-toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import WishlistButton from '../components/ui/WishlistButton'
+import Navbar from '../components/layout/Navbar'
+import Footer from '../components/layout/Footer'
+
 
 const ProductDetailPage = () => {
   const { id } = useParams()
@@ -31,7 +35,7 @@ const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState('description')
   
   const { currentProduct, isLoading } = useSelector((state) => state.products)
-  const { isAuthenticated } = useSelector((state) => state.auth)
+  const cartError = useSelector(selectCartError)
 
   useEffect(() => {
     if (id) {
@@ -46,8 +50,16 @@ const ProductDetailPage = () => {
   const handleAddToCart = () => {
     if (currentProduct) {
       dispatch(addToCart({ product: currentProduct, quantity }))
+      toast.success('Added to cart')
     }
   }
+
+  useEffect(() => {
+    if (cartError) {
+      toast.error(cartError)
+      dispatch(clearCartError())
+    }
+  }, [cartError, dispatch])
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change
@@ -89,7 +101,9 @@ const ProductDetailPage = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+   <>
+   <Navbar />
+   <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Images */}
@@ -242,26 +256,22 @@ const ProductDetailPage = () => {
                 <button
                   onClick={handleAddToCart}
                   disabled={
-                    !isAuthenticated || 
                     (currentProduct.inventory?.trackQuantity !== false && currentProduct.inventory?.quantity <= 0)
                   }
                   className={`btn-lg flex-1 flex items-center justify-center ${
-                    !isAuthenticated || 
                     (currentProduct.inventory?.trackQuantity !== false && currentProduct.inventory?.quantity <= 0)
                       ? 'btn-disabled'
                       : 'btn-primary'
                   }`}
                 >
                   <ShoppingCart className="h-5 w-5 mr-2" />
-                  {!isAuthenticated 
-                    ? 'Login to Add to Cart'
-                    : (currentProduct.inventory?.trackQuantity !== false && currentProduct.inventory?.quantity <= 0)
+                  {(currentProduct.inventory?.trackQuantity !== false && currentProduct.inventory?.quantity <= 0)
                     ? 'Out of Stock'
                     : 'Add to Cart'
                   }
                 </button>
                 <WishlistButton 
-                  productId={product._id} 
+                  productId={currentProduct._id} 
                   size="lg"
                   className="btn-outline btn-lg p-3"
                 />
@@ -477,6 +487,8 @@ const ProductDetailPage = () => {
         </div>
       </div>
     </div>
+   <Footer />
+   </>
   )
 }
 
